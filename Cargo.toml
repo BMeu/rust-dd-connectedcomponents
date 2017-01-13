@@ -1,0 +1,7 @@
+[package]
+name = "connected-components"
+version = "0.1.0"
+authors = ["Bastian Meyer <bastian@bastianmeyer.eu>"]
+
+[dependencies]
+timely = "0.1.0"
