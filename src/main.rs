@@ -7,9 +7,6 @@ use std::cmp::min;
 use std::hash::Hash;
 use std::mem;
 
-use std::fs::File;
-use std::io::{Write, BufWriter};
-
 use differential_dataflow::Collection;
 use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::*;
@@ -31,18 +28,12 @@ fn main() {
         let seed: &[_] = &[0];
         let mut rng: StdRng = SeedableRng::from_seed(seed);
         let mut graph = Vec::with_capacity(edge_count as usize);
-        let file = File::create("./graph.txt").expect("Unable to create file");
-        let mut file = BufWriter::new(file);
         for _ in 0..edge_count {
             let node1: Node = rng.gen_range(0u64, node_count);
             let node2: Node = rng.gen_range(0u64, node_count);
             let edge: Edge = (node1, node2);
-            let edge_string = format!("{},{}\n", node1, node2);
-            file.write_all(edge_string.as_bytes()).expect("Unable to write data");
             graph.push((edge, 1));
         }
-        file.flush().expect("Unable to flush data.");
-        println!("{}", graph.len());
         let graph_iter = graph.clone();
 
         println!("Running connected components on a random graph ({} nodes, {} edges)", node_count, edge_count);
