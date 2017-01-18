@@ -36,31 +36,41 @@ fn main() {
         println!("Running connected components on a random graph ({} nodes, {} edges)", node_count, edge_count);
         println!("For each size, the number of components of that size (may take a moment):");
 
-        let mut input = computation.scoped::<u64, _, _>(|scope| {
-            let (handle, edges) = scope.new_input::<(Edge, i32)>();
+        let graph_iter = graph.clone();
+        let (mut input, probe) = computation.scoped::<u64, _, _>(|scope| {
+            let (handle, updates) = scope.new_input::<(Edge, i32)>();
 
-            connected_components(&Collection::new(edges))
+            let edges = updates.concat(&graph.to_stream(scope));
+            let probe = connected_components(&Collection::new(edges))
                 .map(|node| node.1)
                 .count()
                 .map(|count| count.1)
                 .consolidate()
                 .inspect(|x| {
                     println!("{:?}", x)
-                });
+                })
+                .probe().0;
 
-            handle
+            (handle, probe)
         });
 
-        for edge in &graph {
-            input.send(*edge);
+        // Wait until the initial graph has been processed.
+        let mut next = input.epoch() + 1;
+        input.advance_to(next);
+        while probe.lt(input.time()) {
+            computation.step();
         }
 
         println!();
         println!("Next: sequentially rewiring random edges (press [enter] each time):");
 
-        /*for (round, edge) in graph.into_iter().enumerate() {
+        // Introduce changes to the graph.
+        for edge in graph_iter {
+            // Wait for any user input.
             let mut user_input = String::new();
             std::io::stdin().read_line(&mut user_input).unwrap();
+
+            // Delete the current edge and introduce a new one.
             let edge: Edge = edge.0;
             let node1: Node = rng.gen_range(0u64, node_count);
             let node2: Node = rng.gen_range(0u64, node_count);
@@ -68,8 +78,14 @@ fn main() {
             println!("Rewiring edge: {:?} -> {:?}", edge, new_edge);
             input.send((edge, -1));
             input.send((new_edge, 1));
-            input.advance_to((round + 2) as u64);
-        }*/
+
+            // Wait until the changes have been processed.
+            next = input.epoch() + 1;
+            input.advance_to(next);
+            while probe.lt(input.time()) {
+                computation.step();
+            }
+        }
     }).unwrap();
 }
 
