@@ -1,5 +1,6 @@
 extern crate differential_dataflow;
 extern crate rand;
+extern crate stopwatch;
 extern crate timely;
 
 use std::cmp::min;
@@ -11,6 +12,7 @@ use differential_dataflow::lattice::Lattice;
 use differential_dataflow::operators::*;
 use differential_dataflow::operators::group::Count;
 use rand::{Rng, SeedableRng, StdRng};
+use stopwatch::Stopwatch;
 use timely::dataflow::*;
 use timely::dataflow::operators::*;
 
@@ -32,11 +34,13 @@ fn main() {
             let edge: Edge = (node1, node2);
             graph.push((edge, 1));
         }
+        let graph_iter = graph.clone();
 
         println!("Running connected components on a random graph ({} nodes, {} edges)", node_count, edge_count);
         println!("For each size, the number of components of that size (may take a moment):");
 
-        let graph_iter = graph.clone();
+        let mut stopwatch = Stopwatch::start_new();
+
         let (mut input, probe) = computation.scoped::<u64, _, _>(|scope| {
             let (handle, updates) = scope.new_input::<(Edge, i32)>();
 
@@ -46,8 +50,10 @@ fn main() {
                 .count()
                 .map(|count| count.1)
                 .consolidate()
-                .inspect(|x| {
-                    println!("{:?}", x)
+                .inspect_batch(|_, xs| {
+                    for x in xs {
+                        println!("{:?}", x);
+                    }
                 })
                 .probe().0;
 
@@ -60,6 +66,7 @@ fn main() {
         while probe.lt(input.time()) {
             computation.step();
         }
+        println!("Time to process: {}", stopwatch);
 
         println!();
         println!("Next: sequentially rewiring random edges (press [enter] each time):");
@@ -76,6 +83,7 @@ fn main() {
             let node2: Node = rng.gen_range(0u64, node_count);
             let new_edge: Edge = (node1, node2);
             println!("Rewiring edge: {:?} -> {:?}", edge, new_edge);
+            stopwatch.restart();
             input.send((edge, -1));
             input.send((new_edge, 1));
 
@@ -85,6 +93,7 @@ fn main() {
             while probe.lt(input.time()) {
                 computation.step();
             }
+            println!("Time to process: {}", stopwatch);
         }
     }).unwrap();
 }

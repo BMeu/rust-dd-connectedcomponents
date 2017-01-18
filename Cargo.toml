@@ -6,4 +6,5 @@ authors = ["Bastian Meyer <bastian@bastianmeyer.eu>"]
 [dependencies]
 differential-dataflow = { git = "https://github.com/frankmcsherry/differential-dataflow.git" }
 rand = "0.3.0"
+stopwatch = "0.0.7"
 timely = "0.1.0"
