@@ -50,10 +50,11 @@ fn main() {
                 .count()
                 .map(|count| count.1)
                 .consolidate()
-                .inspect_batch(|_, xs| {
-                    for x in xs {
-                        println!("{:?}", x);
-                    }
+                .inspect(|x| {
+                    // Printing the elapsed time here would require the stopwatch to be moved
+                    // inside and cloned into this closure, which then wouldn't allow us to reset
+                    // the stopwatch when introducing the changes.
+                    println!("{:?}", x)
                 })
                 .probe().0;
 
